@@ -6,31 +6,7 @@ from sklearn.metrics import accuracy_score
 from tkinter import Tk, Label, Entry, Button, StringVar, IntVar, Radiobutton, messagebox
 from tkinter import ttk
 from datetime import datetime, timedelta
-import twilio  # Instala la librería 'twilio' para enviar SMS
-from twilio.rest import Client
 
-# Tu SID de cuenta y token de autenticación de Twilio (obténlos de https://www.twilio.com/console)
-account_sid = "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Reemplázalo con tu SID
-auth_token = "your_auth_token"  # Reemplázalo con tu token
-
-# Función para enviar SMS
-def enviar_sms(numero_telefono, mensaje):
-    client = Client(account_sid, auth_token)
-    message = client.messages.create(
-        to=numero_telefono,
-        from_="+11234567890",  # Reemplázalo con tu número de teléfono Twilio
-        body=mensaje
-    )
-    print(f"SMS enviado a {numero_telefono}: {message.sid}")
-
-# Función para cargar datos históricos
-def cargar_datos_historicos():
-    try:
-        data = pd.read_csv("datos_historicos_embarazo.csv")
-        return data
-    except FileNotFoundError:
-        print("Archivo de datos históricos no encontrado.")
-        return None
 
 # Función para preprocesar los datos
 def preprocesar_datos(data):
