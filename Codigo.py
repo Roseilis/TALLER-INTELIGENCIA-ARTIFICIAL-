@@ -84,11 +84,6 @@ def calcular_fecha_parto():
 window = Tk()
 window.title("Evaluación de Riesgo de Embarazo")
 
-# Imagen de fondo
-background_image = "imagen_fondo.png"  # Reemplaza con el nombre de tu imagen
-background_label = Label(window, image=background_image)
-background_label.place(x=0, y=0, relwidth=1, relheight=1)
-
 # Etiquetas y campos de entrada
 edad_label = Label(window, text="Edad:")
 edad_label.place(x=50, y=50)
