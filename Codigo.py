@@ -8,8 +8,6 @@ from tkinter import ttk
 from datetime import datetime, timedelta
 
 
-
-
 # Función para cargar datos históricos
 def cargar_datos_historicos():
     try:
@@ -58,17 +56,16 @@ def calcular_fecha_parto(fecha_ultima_menstruacion):
         messagebox.showerror("Error", "Formato de fecha inválido. Use YYYY-MM-DD")
         return None
 
-# Función para evaluar el riesgo
+# Función para evaluar el riesgo y mostrar los resultados
 def evaluar_riesgo():
     edad = int(edad_entry.get())
-    talla = float(talla_entry.get())
-    peso = float(peso_entry.get())
-    hipertension_cronica = int(hipertension_cronica_var.get())
-    its = int(its_var.get())
-    sobrepeso = int(sobrepeso_var.get())
-    fumadora = int(fumadora_var.get())
-    diabetes = int(diabetes_var.get())
-
+    talla = int(talla_entry.get())
+    peso = int(peso_entry.get())
+    hipertension_cronica = hipertension_cronica_var.get()
+    its = its_var.get()
+    sobrepeso = sobrepeso_var.get()
+    fumadora = fumadora_var.get()
+    diabetes = diabetes_var.get()
     nuevos_datos = [[edad, talla, peso, hipertension_cronica, its, sobrepeso, fumadora, diabetes]]
     nuevos_datos = StandardScaler().fit_transform(nuevos_datos)
     riesgo_embarazo = model.predict(nuevos_datos)[0]
