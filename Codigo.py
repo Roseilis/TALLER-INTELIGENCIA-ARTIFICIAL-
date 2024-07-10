@@ -1,60 +1,312 @@
 import pandas as pd
+
 from sklearn.model_selection import train_test_split
+
 from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score
-from tkinter import Tk, Label, Entry, Button, StringVar, IntVar, Radiobutton, messagebox
-from tkinter import ttk
+
+from tensorflow.keras.models import Sequential
+
+from tensorflow.keras.layers import Dense
+
+from tensorflow.keras.utils import to_categorical
+
+from sklearn.linear_model import LinearRegression
+
 from datetime import datetime, timedelta
 
 
-# Función para cargar datos históricos
-def cargar_datos_historicos():
+
+import tkinter as tk
+
+from tkinter import ttk
+
+from tkinter import messagebox
+
+
+
+# --- Red neuronal para determinar el riesgo en el embarazo ---
+
+
+
+def entrenar_red_neuronal(data):
+
+  """Entrena la red neuronal para determinar el riesgo en el embarazo."""
+
+
+
+  # 1. Preprocesamiento de datos
+
+  #   2.1 Convertir variables categóricas a numéricas
+
+  data['hipertension_arterial'] = data['hipertension_arterial'].map({'Si': 1, 'No': 0})
+
+  data['diabetes'] = data['diabetes'].map({'Si': 1, 'No': 0})
+
+  data['preeclampsia'] = data['preeclampsia'].map({'Si': 1, 'No': 0})
+
+  data['hipertension_cronica'] = data['hipertension_cronica'].map({'Si': 1, 'No': 0})
+
+  data['sobrepeso'] = data['sobrepeso'].map({'Si': 1, 'No': 0})
+
+
+
+  #   2.2 Separar datos en características (X) y etiquetas (y)
+
+  X = data[['hipertension_arterial', 'diabetes', 'preeclampsia', 'hipertension_cronica', 'sobrepeso']]
+
+  y = data['riesgo_embarazo']
+
+
+
+  #   2.3 Dividir datos en conjuntos de entrenamiento y prueba
+
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+
+  #   2.4 Escalar los datos (opcional, pero recomendado para redes neuronales)
+
+  scaler = StandardScaler()
+
+  X_train = scaler.fit_transform(X_train)
+
+  X_test = scaler.transform(X_test)
+
+
+
+  # 3. Construir la red neuronal
+
+  model = Sequential()
+
+  model.add(Dense(8, activation='relu', input_shape=(X_train.shape[1],)))  # Capa oculta con 8 neuronas
+
+  model.add(Dense(1, activation='sigmoid'))  # Capa de salida con 1 neurona (probabilidad de riesgo)
+
+
+
+  # 4. Compilar el modelo
+
+  model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+
+
+  # 5. Entrenar el modelo
+
+  history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_test, y_test))  # Ajusta epochs y batch_size según sea necesario
+
+
+
+  # 6. Evaluar el modelo
+
+  _, accuracy = model.evaluate(X_test, y_test)
+
+  print('Accuracy: %.2f' % (accuracy * 100))
+
+
+
+  return model, scaler
+
+
+
+# --- Regresión lineal para predecir la fecha de parto ---
+
+
+
+def predecir_fecha_parto(ultima_menstruacion, semanas_embarazo=0, dias_embarazo=0):
+
+  """
+
+  Predicción de la fecha de parto utilizando regresión lineal.
+
+  """
+
+
+
+  fecha_ultima_menstruacion = datetime.strptime(ultima_menstruacion, "%Y-%m-%d")
+
+
+
+  data = pd.DataFrame({
+
+      'dias_desde_ultima_menstruacion': [0], 
+
+      'semanas_embarazo': [semanas_embarazo],
+
+      'dias_embarazo': [dias_embarazo]
+
+  })
+
+
+
+  model = LinearRegression()
+
+
+
+  X_train = pd.DataFrame({
+
+      'dias_desde_ultima_menstruacion': [0, 280, 280 * 7], 
+
+      'semanas_embarazo': [0, 40, 40],
+
+      'dias_embarazo': [0, 280, 280 * 7]
+
+  })
+
+  y_train = [fecha_ultima_menstruacion, fecha_ultima_menstruacion + timedelta(days=280), 
+
+              fecha_ultima_menstruacion + timedelta(weeks=40)]
+
+  model.fit(X_train, y_train)
+
+
+
+  fecha_parto_estimada = model.predict(data)[0]
+
+  fecha_parto_estimada = fecha_parto_estimada.strftime("%Y-%m-%d")
+
+
+
+  return fecha_parto_estimada
+
+
+
+# --- Interfaz gráfica ---
+
+
+
+class Aplicacion(tk.Tk):
+
+  def __init__(self):
+
+    super().__init__()
+
+
+
+    # Configuración de la ventana
+
+    self.title("Calculadora de Embarazo")
+
+    self.geometry("500x400")
+
+    self.configure(bg="#87CEEB")  # Color azul celeste
+
+
+
+    # Crear la etiqueta de título
+
+    label_titulo = tk.Label(self, text="Calculadora de Embarazo", font=("Arial", 16), bg="#87CEEB")
+
+    label_titulo.pack(pady=10)
+
+
+
+    # Crear el marco para los datos del paciente
+
+    frame_datos = tk.Frame(self, bg="#87CEEB")
+
+    frame_datos.pack(pady=10)
+
+
+
+    # Campos de entrada para los datos del paciente
+
+    label_ultima_menstruacion = tk.Label(frame_datos, text="Última Menstruación (AAAA-MM-DD):", bg="#87CEEB")
+
+    label_ultima_menstruacion.grid(row=0, column=0, padx=5, pady=5)
+
+    self.entry_ultima_menstruacion = tk.Entry(frame_datos)
+
+    self.entry_ultima_menstruacion.grid(row=0, column=1, padx=5, pady=5)
+
+
+
+    label_semanas_embarazo = tk.Label(frame_datos, text="Semanas de Embarazo:", bg="#87CEEB")
+
+    label_semanas_embarazo.grid(row=1, column=0, padx=5, pady=5)
+
+    self.entry_semanas_embarazo = tk.Entry(frame_datos)
+
+    self.entry_semanas_embarazo.grid(row=1, column=1, padx=5, pady=5)
+
+
+
+    label_dias_embarazo = tk.Label(frame_datos, text="Días de Embarazo:", bg="#87CEEB")
+
+    label_dias_embarazo.grid(row=2, column=0, padx=5, pady=5)
+
+    self.entry_dias_embarazo = tk.Entry(frame_datos)
+
+    self.entry_dias_embarazo.grid(row=2, column=1, padx=5, pady=5)
+
+
+
+    # Marco para los antecedentes médicos
+
+    self.frame_antecedentes = tk.Frame(self, bg="#87CEEB")
+
+    self.frame_antecedentes.pack(pady=10)
+
+
+
+    # Crear el checkbutton para antecedentes médicos
+
+    self.check_hipertension_arterial = tk.Checkbutton(self.frame_antecedentes, text="Hipertensión Arterial", bg="#87CEEB")
+
+    self.check_hipertension_arterial.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+
+    self.check_diabetes = tk.Checkbutton(self.frame_antecedentes, text="Diabetes", bg="#87CEEB")
+
+    self.check_diabetes.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+
+    self.check_preeclampsia = tk.Checkbutton(self.frame_antecedentes, text="Preeclampsia", bg="#87CEEB")
+
+    self.check_preeclampsia.grid(row=2, column=0, padx=5, pady=5, sticky="w")
+
+    self.check_hipertension_cronica = tk.Checkbutton(self.frame_antecedentes, text="Hipertensión Crónica", bg="#87CEEB")
+
+    self.check_hipertension_cronica.grid(row=3, column=0, padx=5, pady=5, sticky="w")
+
+    self.check_sobrepeso = tk.Checkbutton(self.frame_antecedentes, text="Sobrepeso", bg="#87CEEB")
+
+    self.check_sobrepeso.grid(row=4, column=0, padx=5, pady=5, sticky="w")
+
+
+
+    # Botones
+
+    button_fecha_parto = tk.Button(self, text="Fecha de Parto", command=self.calcular_fecha_parto, bg="#4CAF50", fg="white", width=15)
+
+    button_fecha_parto.pack(pady=10)
+
+    button_riesgo_embarazo = tk.Button(self, text="Riesgo de Embarazo", command=self.evaluar_riesgo_embarazo, bg="#f44336", fg="white", width=15)
+
+    button_riesgo_embarazo.pack(pady=10)
+
+
+
+  def calcular_fecha_parto(self):
+
+    """Calcula la fecha de parto estimada."""
+
+
+
+    ultima_menstruacion = self.entry_ultima_menstruacion.get()
+
+    semanas_embarazo = int(self.entry_semanas_embarazo.get()) if self.entry_semanas_embarazo.get() else 0
+
+    dias_embarazo = int(self.entry_dias_embarazo.get()) if self.entry_dias_embarazo.get() else 0
+
+
+
     try:
-        data = pd.read_csv("datos_historicos_embarazo.csv")
-        return data
-    except FileNotFoundError:
-        print("Archivo de datos históricos no encontrado.")
-        return None
 
-# Función para preprocesar los datos
-def preprocesar_datos(data):
-    X = data.drop("desarrollo_de_preeclampsia", axis=1)
-    y = data["desarrollo_de_preeclampsia"]
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    return X_train, X_test, y_train, y_test
+      fecha_parto = predecir_fecha_parto(ultima_menstruacion, semanas_embarazo, dias_embarazo)
 
-# Función para entrenar el modelo
-def entrenar_modelo(X_train, y_train):
-    model = MLPClassifier(hidden_layer_sizes=(100, 50), activation="relu", solver="adam", max_iter=500)
-    model.fit(X_train, y_train)
-    return model
+      messagebox.showinfo("Fecha de Parto", f"Fecha de parto estimada: {fecha_parto}")
 
-# Función para evaluar el modelo
-def evaluar_modelo(model, X_test, y_test):
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    print(f"Precisión del modelo: {accuracy:.2f}")
-
-# Función para obtener consejo
-def obtener_consejo(riesgo):
-    consejos = {
-        0: "Su riesgo de desarrollar preeclampsia es bajo. ¡Disfrute de este tiempo especial!",
-        1: "Su riesgo de desarrollar preeclampsia es alto. Consulte a su médico regularmente para un mejor seguimiento."
-    }
-    return consejos[riesgo]
-
-# Función para calcular la fecha de parto
-def calcular_fecha_parto(fecha_ultima_menstruacion):
-    try:
-        fecha_ultima_menstruacion = datetime.strptime(fecha_ultima_menstruacion, "%Y-%m-%d")
-        fecha_parto = fecha_ultima_menstruacion + timedelta(days=280)
-        return fecha_parto.strftime("%Y-%m-%d")
     except ValueError:
-        messagebox.showerror("Error", "Formato de fecha inválido. Use YYYY-MM-DD")
-        return None
+
+      messagebox.showerror("Error", "Ingresa una fecha válida (AAAA-MM-DD).")
 
 # Función para evaluar el riesgo y mostrar los resultados
 def evaluar_riesgo():
@@ -75,113 +327,59 @@ def evaluar_riesgo():
     consejo = obtener_consejo(riesgo_embarazo)
     consejo_label.config(text=consejo)
 
-  
-# Función para calcular la fecha de parto
-def calcular_fecha_parto():
-    fecha_ultima_menstruacion = fecha_ultima_menstruacion_entry.get()
-    fecha_parto = calcular_fecha_parto(fecha_ultima_menstruacion)
-    if fecha_parto:
-        fecha_parto_label.config(text=f"Fecha posible de parto: {fecha_parto}")
+  def evaluar_riesgo_embarazo(self):
 
-# Crear la ventana principal
-window = Tk()
-window.title("Evaluación de Riesgo de Embarazo")
 
-# Imagen de fondo
-background_image = "imagen_fondo.png"  # Reemplaza con el nombre de tu imagen
-background_label = Label(window, image=background_image)
-background_label.place(x=0, y=0, relwidth=1, relheight=1)
+    # Carga de datos de prueba (reemplaza con tus datos reales)
 
-# Etiquetas y campos de entrada
-edad_label = Label(window, text="Edad:")
-edad_label.place(x=50, y=50)
-edad_entry = Entry(window)
-edad_entry.place(x=100, y=50)
+    data = pd.DataFrame({
 
-talla_label = Label(window, text="Talla (cm):")
-talla_label.place(x=50, y=80)
-talla_entry = Entry(window)
-talla_entry.place(x=100, y=80)
+        'hipertension_arterial': [hipertension_arterial],
 
-peso_label = Label(window, text="Peso (kg):")
-peso_label.place(x=50, y=110)
-peso_entry = Entry(window)
-peso_entry.place(x=100, y=110)
+        'diabetes': [diabetes],
 
-# Variables para los botones de selección
-hipertension_cronica_var = IntVar()
-its_var = IntVar()
-sobrepeso_var = IntVar()
-fumadora_var = IntVar()
-diabetes_var = IntVar()
+        'preeclampsia': [preeclampsia],
 
-# Botones de selección
-hipertension_cronica_label = Label(window, text="Hipertensión crónica:")
-hipertension_cronica_label.place(x=50, y=140)
-hipertension_cronica_si = Radiobutton(window, text="Sí", variable=hipertension_cronica_var, value=1)
-hipertension_cronica_si.place(x=150, y=140)
-hipertension_cronica_no = Radiobutton(window, text="No", variable=hipertension_cronica_var, value=0)
-hipertension_cronica_no.place(x=200, y=140)
+        'hipertension_cronica': [hipertension_cronica],
 
-its_label = Label(window, text="ITS:")
-its_label.place(x=50, y=170)
-its_si = Radiobutton(window, text="Sí", variable=its_var, value=1)
-its_si.place(x=150, y=170)
-its_no = Radiobutton(window, text="No", variable=its_var, value=0)
-its_no.place(x=200, y=170)
+        'sobrepeso': [sobrepeso],
 
-sobrepeso_label = Label(window, text="Sobrepeso:")
-sobrepeso_label.place(x=50, y=200)
-sobrepeso_si = Radiobutton(window, text="Sí", variable=sobrepeso_var, value=1)
-sobrepeso_si.place(x=150, y=200)
-sobrepeso_no = Radiobutton(window, text="No", variable=sobrepeso_var, value=0)
-sobrepeso_no.place(x=200, y=200)
+        'riesgo_embarazo': [0]  # Inicializa 'riesgo_embarazo' a 0
 
-fumadora_label = Label(window, text="Fumadora:")
-fumadora_label.place(x=50, y=230)
-fumadora_si = Radiobutton(window, text="Sí", variable=fumadora_var, value=1)
-fumadora_si.place(x=150, y=230)
-fumadora_no = Radiobutton(window, text="No", variable=fumadora_var, value=0)
-fumadora_no.place(x=200, y=230)
+    })
 
-diabetes_label = Label(window, text="Diabetes:")
-diabetes_label.place(x=50, y=260)
-diabetes_si = Radiobutton(window, text="Sí", variable=diabetes_var, value=1)
-diabetes_si.place(x=150, y=260)
-diabetes_no = Radiobutton(window, text="No", variable=diabetes_var, value=0)
-diabetes_no.place(x=200, y=260)
 
-# Botón para evaluar el riesgo
-evaluar_riesgo_button = Button(window, text="Evaluar Riesgo", command=evaluar_riesgo)
-evaluar_riesgo_button.place(x=100, y=300)
 
-# Etiquetas para mostrar la respuesta
-respuesta_label = Label(window, text="")
-respuesta_label.place(x=100, y=350)
+    # Entrena la red neuronal
 
-consejo_label = Label(window, text="")
-consejo_label.place(x=100, y=380)
+    model, scaler = entrenar_red_neuronal(data)
 
-# Campo de entrada y botón para la fecha de última menstruación
-fecha_ultima_menstruacion_label = Label(window, text="Fecha de última menstruación (YYYY-MM-DD):")
-fecha_ultima_menstruacion_label.place(x=50, y=450)
-fecha_ultima_menstruacion_entry = Entry(window)
-fecha_ultima_menstruacion_entry.place(x=100, y=450)
-calcular_fecha_parto_button = Button(window, text="Calcular Fecha de Parto", command=calcular_fecha_parto)
-calcular_fecha_parto_button.place(x=100, y=480)
 
-# Etiqueta para mostrar la fecha de parto
-fecha_parto_label = Label(window, text="")
-fecha_parto_label.place(x=100, y=510)
 
-# Cargar y entrenar el modelo
-data = cargar_datos_historicos()
-if data is not None:
-    X_train, X_test, y_train, y_test = preprocesar_datos(data)
-    model = entrenar_modelo(X_train, y_train)
-    evaluar_modelo(model, X_test, y_test)
-else:
-    messagebox.showerror("Error", "No se pudo cargar el archivo de datos históricos.")
+    # Predecir el riesgo de embarazo
 
-# Iniciar la ventana
-window.mainloop()
+    nuevos_datos = [[hipertension_arterial, diabetes, preeclampsia, hipertension_cronica, sobrepeso]]
+
+    nuevos_datos = scaler.transform(nuevos_datos)
+
+    prediccion = model.predict(nuevos_datos)[0][0]
+
+
+
+    # Mostrar el resultado
+
+    if prediccion >= 0.5:
+
+      messagebox.showinfo("Riesgo de Embarazo", "El embarazo tiene un riesgo elevado.")
+
+    else:
+
+      messagebox.showinfo("Riesgo de Embarazo", "El embarazo no presenta un riesgo elevado.")
+
+
+
+# Iniciar la aplicación
+
+app = Aplicacion()
+
+app.mainloop()
