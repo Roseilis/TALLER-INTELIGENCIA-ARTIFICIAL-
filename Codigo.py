@@ -327,7 +327,6 @@ def evaluar_riesgo():
     consejo = obtener_consejo(riesgo_embarazo)
     consejo_label.config(text=consejo)
 
-  def evaluar_riesgo_embarazo(self):
 
 
     # Carga de datos de prueba (reemplaza con tus datos reales)
